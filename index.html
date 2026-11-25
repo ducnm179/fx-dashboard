@@ -124,6 +124,14 @@ details.panel>summary::-webkit-details-marker{display:none}
 footer{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;line-height:1.5}
 footer .row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 footer .int{color:var(--red);font-weight:700}
+table.st{border-collapse:collapse;width:100%;font-size:13px;min-width:860px}
+.st th{text-align:left;color:var(--ink);padding:7px 8px;border-bottom:2px solid var(--red);white-space:nowrap}
+.st td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+.st td:first-child{font-weight:700;color:var(--ink);min-width:170px}
+.st td:nth-child(2){width:15%}.st td:nth-child(3){width:25%}.st td:nth-child(4){width:30%}
+.st td.now{font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;border:1px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--red);background:color-mix(in srgb,var(--red) 10%,transparent)} .pill.na{color:var(--muted)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -223,6 +231,12 @@ footer .int{color:var(--red);font-weight:700}
     </section>
 
     <section class="panel">
+      <h2 class="rh">Bảng chỉ báo căng thẳng tỷ giá<div class="rule"></div></h2>
+      <p class="unit">Trạng thái tính tự động từ dữ liệu mới nhất theo ngưỡng ở cột thứ ba. Giá ngân hàng = USD/VND liên ngân hàng; giá tự do = giá mua tự do trong file</p>
+      <div class="scroll"><table class="st" id="stTbl"><thead><tr><th>Chỉ báo</th><th>Đo điều gì</th><th>Ngưỡng căng thẳng</th><th>Hiện tại</th><th>Trạng thái</th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section class="panel">
       <h2 class="rh">Liên ngân hàng, tự do và biên độ<div class="rule"></div></h2>
       <p class="unit">Trần/sàn = tỷ giá trung tâm × (1 ± 5%)</p>
       <div class="chart" id="c-band"></div>
@@ -230,6 +244,17 @@ footer .int{color:var(--red);font-weight:700}
         <div><div class="ctitle">Spread USD/VND tự do (mua) − liên ngân hàng</div><p class="unit">Đơn vị: đồng. Dải màu: trung bình ±1σ và ±2σ của 52 tuần gần nhất</p><div class="chart" id="c-free"></div></div>
         <div><div class="ctitle">Dư địa tới trần biên độ</div><p class="unit">Đơn vị: % = (trần − liên ngân hàng) / liên ngân hàng. Càng gần 0 thì áp lực can thiệp càng lớn</p><div class="chart" id="c-head"></div></div>
       </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="rh">Chỉ báo căng thẳng chi tiết<div class="rule"></div></h2>
+      <div class="grid2">
+        <div><div class="ctitle">1. Số phiên sát trần trong 20 phiên gần nhất</div><p class="unit">Phiên sát trần: liên ngân hàng cách trần dưới 0,3%. Vạch đứt: 10 phiên (một nửa thời gian)</p><div class="chart" id="s-ceil"></div></div>
+        <div><div class="ctitle">4a. Carry VND − USD theo kỳ hạn</div><p class="unit">Điểm % = VNIBOR − lãi suất USD cùng kỳ hạn (ON: SOFR; 1M/3M: SOFR bình quân). Dưới 0: giữ VND lỗ carry so với USD</p><div class="chart" id="s-carry"></div></div>
+        <div><div class="ctitle">4b. Độ dốc đường cong swap gap onshore</div><p class="unit">Điểm % = swap gap 6M − swap gap 1M. Âm: đường cong đảo dốc, kỳ hạn ngắn đắt hơn kỳ hạn dài</p><div class="chart" id="s-curve"></div></div>
+        <div><div class="ctitle">5. VNIBOR qua đêm và các phiên tăng vọt</div><p class="unit">Chấm đỏ: vượt trung vị 20 phiên trước hơn 150 bps, ngoài mùa vụ. Chấm xám: tăng vọt trong mùa vụ (quanh Tết, 3 phiên cuối tháng, phiên đầu tháng)</p><div class="chart" id="s-on"></div></div>
+      </div>
+      <p class="read" id="stRead"></p>
     </section>
 
     <section class="panel">
@@ -729,6 +754,25 @@ function joinRoles(roles, fn) { // date-aligned on first role
 }
 const days = (t, m) => (addMonths(t, m) - t) / DAY;
 const implied = (S0, pts, rUSD, d) => ((1 + rUSD / 100 * d / 360) * (S0 + pts) / S0 - 1) * 365 / d * 100;
+const STRESS = {nearCeil: 0.3, ceilWin: 20, ceilBad: 10, ceilWarn: 3, freeBreak: 1000, freeWarn: 500, onSpike: 1.5, onWin: 20, carryWin: 63};
+const TET = ['2021-02-12', '2022-02-01', '2023-01-22', '2024-02-10', '2025-01-29', '2026-02-17', '2027-02-06'].map((d) => Date.parse(d + 'T00:00:00Z'));
+function seasonal(t, cal) { // quanh Tết (−15/+5 ngày), 3 phiên cuối tháng, phiên đầu tháng
+  if (TET.some((x) => t >= x - 15 * DAY && t <= x + 5 * DAY)) return true;
+  const i = cal.indexOf(t); if (i < 0) return false;
+  const mo = (k) => k >= 0 && k < cal.length ? new Date(cal[k]).getUTCMonth() : null;
+  const m = mo(i);
+  if (mo(i - 1) !== null && mo(i - 1) !== m) return true;
+  for (let k = 1; k <= 3; k++) if (mo(i + k) !== null && mo(i + k) !== m) return true;
+  return false;
+}
+const SD = {
+  ceilCount: () => { const h = DER.head(); return h.map((p, i) => [p[0], h.slice(Math.max(0, i - STRESS.ceilWin + 1), i + 1).filter((q) => q[1] < STRESS.nearCeil).length]); },
+  ceilStreak: () => { const h = DER.head(); let n = 0; for (let i = h.length - 1; i >= 0 && h[i][1] < STRESS.nearCeil; i--) n++; return n; },
+  carry: (k) => k === 'ON' ? joinRoles(['vnON', 'usdON'], (a, b) => a - b) : joinRoles(['vn' + k, 'usd' + k], (a, b) => a - b),
+  slope: () => joinRoles(['lnh', 'sw6', 'sw1'], (s, a, b, t) => (a / s * 365 / days(t, 6) - b / s * 365 / days(t, 1)) * 100),
+  onExcess: () => { const o = R('vnON'); if (!o) return []; const p = o.pts; return p.map((q, i) => { if (i < STRESS.onWin) return null; const med = d3.median(p.slice(i - STRESS.onWin, i), (x) => x[1]); return [q[0], q[1] - med]; }).filter(Boolean); },
+  onSpikes: () => { const o = R('vnON'); if (!o) return []; const cal = o.pts.map((p) => p[0]); return SD.onExcess().filter((p) => p[1] > STRESS.onSpike).map((p) => ({t: p[0], ex: p[1], v: atOrBefore(o.pts, p[0])[1], seas: seasonal(p[0], cal)})); },
+};
 const DER = {
   ceil: () => joinRoles(['central'], (c) => c * 1.05),
   floor: () => joinRoles(['central'], (c) => c * 0.95),
@@ -772,7 +816,7 @@ function lineChart(host, list, opts) {
   const x = d3.scaleUtc(d3.extent(all, (p) => p[0]), [ml, W - mr]);
   const span = x.domain()[1] - x.domain()[0];
   const g = svg.append('g');
-  for (const b of opts.bands || []) g.append('rect').attr('x', ml).attr('width', W - ml - mr).attr('y', y(b.hi)).attr('height', Math.max(0, y(b.lo) - y(b.hi))).style('fill', css('--navy')).style('opacity', b.op ?? 0.08);
+  for (const b of opts.bands || []) g.append('rect').attr('x', ml).attr('width', W - ml - mr).attr('y', y(b.hi)).attr('height', Math.max(0, y(b.lo) - y(b.hi))).style('fill', b.color || css('--navy')).style('opacity', b.op ?? 0.08);
   g.append('g').attr('transform', `translate(0,${H - 24})`)
     .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor((W - ml - mr) / 85))).tickSizeOuter(0).tickFormat((d) => span > 400 * DAY ? `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCFullYear()).slice(2)}` : `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`))
     .attr('font-size', null).attr('font-family', null)
@@ -790,6 +834,7 @@ function lineChart(host, list, opts) {
   list.slice().reverse().forEach((s) => {
     g.append('path').attr('d', line(s.pts)).style('fill', 'none').style('stroke', s.color).style('stroke-width', s.width || (s === list[0] ? 2.4 : 1.8)).style('stroke-dasharray', s.dash || null).style('stroke-linejoin', 'round').style('stroke-linecap', 'round');
   });
+  (opts.marks || []).forEach((m) => { if (m.t < x.domain()[0] || m.t > x.domain()[1]) return; g.append('circle').attr('cx', x(m.t)).attr('cy', y(m.v)).attr('r', m.r || 3.5).style('fill', m.color).style('stroke', 'var(--panel)').style('stroke-width', 1); });
   refLabels.forEach((f) => f());
   if (opts.markers) list.forEach((s) => s.pts.forEach((p, k) => {
     g.append('circle').attr('cx', x(p[0])).attr('cy', y(p[1])).attr('r', 3).style('fill', s.color);
@@ -1052,7 +1097,7 @@ function freeSpreadChart(host, st, h) {
   const fr = DER.free(), L = R('lnh');
   if (!fr.length) return noData(host, 'Cần chuỗi giá tự do và liên ngân hàng.');
   const b = statBands(fr);
-  lineChart(host, [{name: 'Spread', color: palette()[0], pts: clip(fr, st)}], {height: h, zero: true, fmt: (v) => vn(v, 0), end: (v) => sg(v, 0) + ' đ', bands: b.bands, refs: b.refs,
+  lineChart(host, [{name: 'Spread', color: palette()[0], pts: clip(fr, st)}], {height: h, zero: true, fmt: (v) => vn(v, 0), end: (v) => sg(v, 0) + ' đ', bands: b.bands, refs: [...b.refs, {v: STRESS.freeBreak, label: 'Ngưỡng đứt gãy', color: css('--red')}],
     extra: (s, p) => { const l = atOrBefore(L.pts, p[0]); return l ? `(${sg(p[1] / l[1] * 100, 2)}%)` : ''; }});
 }
 function gapSpreadChart(host, st, T, h) {
@@ -1348,6 +1393,56 @@ function renderCredit() {
   tbl.append(tb);
 }
 
+// ---------- stress indicators ----------
+function renderStress(st) {
+  const pal = palette();
+  const cc = SD.ceilCount();
+  if (cc.length) lineChart(document.getElementById('s-ceil'), [{name: 'Số phiên', color: pal[0], pts: clip(cc, st)}], {height: 230, fmt: (v) => vn(v, 0), end: (v) => vn(v, 0) + ' phiên', refs: [{v: STRESS.ceilBad, label: 'Nửa thời gian', color: css('--red')}]});
+  else noData(document.getElementById('s-ceil'), 'Cần tỷ giá trung tâm.');
+  const cON = SD.carry('ON'), c1 = SD.carry('1'), c3 = SD.carry('3');
+  const allC = [...cON, ...c1, ...c3].filter((p) => p[0] >= st).map((p) => p[1]);
+  lineChart(document.getElementById('s-carry'), [{name: '1M', color: pal[0], pts: clip(c1, st)}, {name: '3M', color: pal[1], pts: clip(c3, st)}, {name: 'ON', color: pal[2], pts: clip(cON, st), width: 1.3}],
+    {height: 250, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), tip: (v) => sg(v, 2) + ' điểm %', bands: allC.length && d3.min(allC) < 0 ? [{lo: d3.min(allC) - 0.3, hi: 0, color: css('--red'), op: 0.06}] : [], empty: 'Cần VNIBOR và lãi suất USD.'});
+  const sl = SD.slope();
+  lineChart(document.getElementById('s-curve'), [{name: '6M − 1M', color: pal[0], pts: clip(sl, st)}], {height: 230, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), tip: (v) => sg(v, 2) + ' điểm %', empty: 'Cần Swap 1M và 6M.'});
+  const O = R('vnON'), sp = SD.onSpikes();
+  if (O) lineChart(document.getElementById('s-on'), [{name: 'VNIBOR ON', color: pal[1], pts: clip(O.pts, st), width: 1.6}], {height: 250, fmt: (v) => vn(v, 0) + '%', end: (v) => vn(v, 2) + '%',
+    marks: sp.filter((s) => s.t >= st).map((s) => ({t: s.t, v: s.v, color: s.seas ? css('--muted') : css('--red'), r: s.seas ? 3 : 4}))});
+  else noData(document.getElementById('s-on'));
+  // ---- status table ----
+  const tb = document.querySelector('#stTbl tbody'); tb.replaceChildren();
+  const pill = (cls, txt) => el('span', 'pill ' + cls, txt);
+  const row = (name, what, thr, now, status) => { const tr = el('tr'); [name, what, thr].forEach((x) => tr.append(el('td', null, x))); tr.append(el('td', 'now', now)); const td = el('td'); td.append(status); tr.append(td); tb.append(tr); };
+  const lastCC = cc.at(-1), streak = SD.ceilStreak(), hd = DER.head().at(-1);
+  row('Khoảng cách giá ngân hàng đến trần biên độ', 'Giá còn khớp cung cầu được hay không', `Sát trần (dư địa < ${vn(STRESS.nearCeil, 1)}%) từ ${STRESS.ceilBad}/20 phiên, hoặc từ 5 phiên liên tiếp`,
+    hd ? `Dư địa ${vn(hd[1], 2)}%; ${lastCC[1]}/20 phiên sát trần; chuỗi hiện tại ${streak} phiên` : '—',
+    !hd ? pill('na', 'Chưa có dữ liệu') : (lastCC[1] >= STRESS.ceilBad || streak >= 5) ? pill('bad', 'Căng thẳng') : lastCC[1] >= STRESS.ceilWarn ? pill('warn', 'Theo dõi') : pill('ok', 'Bình thường'));
+  const fr = DER.free(), f = fr.at(-1);
+  const over60 = fr.slice(-60).filter((p) => p[1] > STRESS.freeBreak).length;
+  row('Chênh lệch thị trường tự do − ngân hàng', 'Cầu bị dồn ra ngoài hệ thống', `Vài trăm đồng là bình thường; trên ${vn(STRESS.freeBreak)} đồng là đứt gãy (cuối 2025)`,
+    f ? `${sg(f[1], 0)} đồng; ${over60} phiên trên ${vn(STRESS.freeBreak)} đồng trong 60 phiên` : '—',
+    !f ? pill('na', 'Chưa có dữ liệu') : f[1] > STRESS.freeBreak ? pill('bad', 'Căng thẳng') : (f[1] > STRESS.freeWarn || over60 > 0) ? pill('warn', 'Theo dõi') : pill('ok', 'Bình thường'));
+  row('NHNN bán ngoại tệ và hình thức bán', 'Mức độ dùng dự trữ', 'Chuyển từ tín hiệu sang bán kỳ hạn, sang bán giao ngay quy mô lớn và nới biên độ (2022)', 'Cần nhật ký can thiệp của NHNN', pill('na', 'Chưa có dữ liệu'));
+  const c1l = c1.at(-1), neg1 = c1.slice(-STRESS.carryWin).filter((p) => p[1] < 0).length, negON = cON.slice(-STRESS.carryWin).filter((p) => p[1] < 0).length, slL = sl.at(-1);
+  row('Chênh lệch lãi suất VND − USD và điểm kỳ hạn', 'Áp lực carry', 'Carry âm kéo dài (từ 20/63 phiên); đường cong điểm kỳ hạn méo (6M − 1M < 0)',
+    c1l ? `Carry 1M ${sg(c1l[1], 2)} điểm %; carry âm 63 phiên: 1M ${neg1}, ON ${negON}; độ dốc 6M−1M ${slL ? sg(slL[1], 2) : '—'}` : '—',
+    !c1l ? pill('na', 'Chưa có dữ liệu') : (neg1 >= 20 || negON >= 40) ? pill('bad', 'Căng thẳng') : (neg1 > 0 || negON >= 10 || (slL && slL[1] < 0) || c1l[1] < 0.5) ? pill('warn', 'Theo dõi') : pill('ok', 'Bình thường'));
+  const lastT = O ? O.pts.at(-1)[0] : 0, cal = O ? O.pts.map((p) => p[0]) : [];
+  const recent = (n) => sp.filter((s) => !s.seas && cal.indexOf(s.t) >= cal.length - n);
+  const on = O?.pts.at(-1);
+  row('Lãi suất qua đêm VND và phát hành tín phiếu', 'Phản ứng phòng thủ của NHNN', `Qua đêm tăng vọt (> ${vn(STRESS.onSpike * 100, 0)} bps so với trung vị 20 phiên, ngoài mùa vụ); tín phiếu phát hành dày`,
+    on ? `ON ${vn(on[1], 2)}%; ${recent(10).length} phiên tăng vọt ngoài mùa vụ trong 10 phiên, ${recent(40).length} trong 40 phiên; tín phiếu: chưa có dữ liệu` : '—',
+    !on ? pill('na', 'Chưa có dữ liệu') : recent(10).length ? pill('bad', 'Căng thẳng') : recent(40).length ? pill('warn', 'Theo dõi') : pill('ok', 'Bình thường'));
+  row('Chênh lệch giá vàng SJC so với thế giới', 'Kênh cầu USD phi chính thức', 'Chênh lệch mở rộng đi trước chênh lệch USD tự do', 'Cần giá SJC và XAU/USD', pill('na', 'Chưa có dữ liệu'));
+  // reading
+  const rd = document.getElementById('stRead'); rd.replaceChildren();
+  const longest = (() => { const h = DER.head(); let best = 0, bs = null, be = null, cur = 0, cs = null; h.forEach((p, i) => { if (p[1] < 0.5) { if (!cur) cs = p[0]; cur++; if (cur > best) { best = cur; bs = cs; be = p[0]; } } else cur = 0; }); return {best, bs, be}; })();
+  if (longest.best) rd.append(`Chuỗi sát trần dài nhất trong dữ liệu (dư địa < 0,5%): `, el('b', null, `${longest.best} phiên`), ` từ ${dmy(longest.bs)} đến ${dmy(longest.be)}. `);
+  const allSp = sp.filter((s) => !s.seas);
+  if (allSp.length) rd.append(`VNIBOR ON có ${allSp.length} phiên tăng vọt ngoài mùa vụ trong toàn bộ dữ liệu, gần nhất ${dmy(allSp.at(-1).t)} (${vn(allSp.at(-1).v, 2)}%). `);
+  rd.append('Lịch mùa vụ chỉ lọc các đợt quanh Tết và đầu/cuối tháng; các đợt cuối quý trùng cuối tháng nên cũng được coi là mùa vụ. Carry 1M/3M dùng SOFR bình quân nên chỉ để tham khảo cho tới khi có nguồn lãi suất USD thay thế.');
+}
+
 // ---------- render: pressure ----------
 function pressureRows() {
   return [
@@ -1355,6 +1450,9 @@ function pressureRows() {
     {name: 'Chênh lệch giá tự do − LNH', note: 'dương = USD ngoài hệ thống đắt hơn', pts: DER.freePct(), sign: 1, fmt: (v) => sg(v, 2) + '%'},
     {name: 'Basis swap 3M', note: 'dương = thiếu USD trong nước', pts: DER.basis(3), sign: 1, fmt: (v) => sg(v, 2) + ' điểm %'},
     {name: 'Spread swap gap NDF − onshore 3M', note: 'dương = nước ngoài lo mất giá hơn', pts: DER.gap(3), sign: 1, fmt: (v) => sg(v, 2) + ' điểm %'},
+    {name: 'Số phiên sát trần (20 phiên)', note: 'dư địa tới trần dưới 0,3%', pts: SD.ceilCount(), sign: 1, fmt: (v) => vn(v, 0) + ' phiên'},
+    {name: 'Carry VND − USD 1M', note: 'đổi dấu: carry càng thấp càng đỏ', pts: SD.carry('1'), sign: -1, fmt: (v) => sg(v, 2) + ' điểm %'},
+    {name: 'VNIBOR ON so với trung vị 20 phiên', note: 'dương = lãi suất qua đêm bị đẩy lên', pts: SD.onExcess(), sign: 1, fmt: (v) => sg(v * 100, 0) + ' bps'},
     {name: 'LDR USD (tín dụng / huy động USD)', note: 'dương = hệ thống bớt thừa USD; cần ≥ 26 kỳ để tính z-score', pts: MDER.ldr('U'), sign: 1, fmt: (v) => vn(v, 1) + '%'},
   ];
 }
@@ -1407,6 +1505,7 @@ function renderPressure() {
   const hd = DER.head();
   if (hd.length) lineChart(document.getElementById('c-head'), [{name: 'Dư địa', color: pal[0], pts: clip(hd, st)}], {height: 240, zero: true, fmt: (v) => vn(v, 1) + '%', end: (v) => vn(v, 2) + '%'});
   else noData(document.getElementById('c-head'), 'Cần tỷ giá trung tâm.');
+  renderStress(st);
   // lead-lag (full history, weekly)
   const wl = weekly(L.pts), wf = weekly(fr);
   const mL = new Map(wl.map((p) => [wkKey(p[0]), p[1]])), mF = new Map(wf.map((p) => [wkKey(p[0]), p[1]]));
