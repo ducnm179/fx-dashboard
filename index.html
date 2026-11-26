@@ -946,7 +946,10 @@ function render() {
   document.querySelectorAll('.page').forEach((p) => { p.hidden = p.id !== S.tab; });
   document.querySelectorAll('#periods button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === S.period)));
   document.querySelectorAll('#tenors button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.t === S.tenor)));
-  const vis = S.series.filter((s) => s.visible && s.group !== 'macro').map((s) => C.view.get(s.key)).filter((s) => s && s.pts.length);
+  const lnhLast = R('lnh')?.pts.at(-1)?.[0] ?? 0;
+  // chuỗi VNIBOR > 1M đã ngừng cập nhật (quá 14 ngày so với tỷ giá) thì tự ẩn khỏi trang Tổng quan; lịch sử vẫn giữ
+  const stale = (s) => ILLIQ(s.role) && s.pts.at(-1)[0] < lnhLast - 14 * DAY;
+  const vis = S.series.filter((s) => s.visible && s.group !== 'macro').map((s) => C.view.get(s.key)).filter((s) => s && s.pts.length && !stale(s));
   const lastT = Math.max(0, ...vis.map((s) => s.pts.at(-1)[0]));
   document.getElementById('asof').textContent = lastT ? `Dữ liệu tới ${dmy(lastT)} · khoảng thời gian áp dụng cho biểu đồ theo thời gian` : 'Chưa có dữ liệu';
   renderHeader();
@@ -1545,7 +1548,7 @@ function renderSwap() {
   if (imp.length) l1.push({name: 'VND hàm ý', color: pal[0], pts: clip(imp, st)});
   if (vnT && !ILLIQ('vn' + T)) l1.push({name: 'VNIBOR', color: pal[1], pts: clip(vnT.pts, st)});
   if (T > 1 && R('vn1')) l1.push({name: 'VNIBOR 1M', color: pal[1], pts: clip(R('vn1').pts, st)});
-  if (vnT && ILLIQ('vn' + T)) l1.push({name: `VNIBOR ${T}M (fixing)`, color: css('--muted'), pts: clip(vnT.pts, st), dash: '4 3', width: 1.2});
+  if (vnT && ILLIQ('vn' + T) && vnT.pts.at(-1)[0] >= last - 14 * DAY) l1.push({name: `VNIBOR ${T}M (fixing)`, color: css('--muted'), pts: clip(vnT.pts, st), dash: '4 3', width: 1.2});
   if (uT) l1.push({name: isAvg(uT.key) ? 'SOFR TB' : 'USD', color: pal[2], pts: clip(uT.pts, st), dash: '4 3'});
   lineChart(document.getElementById('c-imp'), l1, {height: 280, fmt: (v) => vn(v, 1) + '%', end: (v) => vn(v, 2) + '%', empty: `Cần USD/VND LNH, Swap ${T}M và SOFR ${T}M.`});
   const b1 = DER.basis(1);
@@ -1556,7 +1559,7 @@ function renderSwap() {
   const bT = b1;
   if (T > 1 && imp.length && R('vn1')) {
     const v1 = R('vn1').pts.at(-1)[1], iv = imp.at(-1)[1];
-    ir.append(`Ngày ${dmy(imp.at(-1)[0])}: lãi suất VND hàm ý ${T}M từ swap `, el('b', null, vn(iv, 2) + '%'), iv >= v1 ? ', cao hơn VNIBOR 1M ' : ', thấp hơn VNIBOR 1M ', el('b', null, vn(v1, 2) + '%'), ': phần bù kỳ hạn ', el('b', null, sg(iv - v1, 2) + ' điểm %'), ` (${T}M so với 1M). VNIBOR ${T}M (${vn(vnT?.pts.at(-1)[1], 2)}%) chỉ là fixing không có giao dịch, nên không dùng để tính basis. Basis dưới đây tính ở kỳ hạn 1M: `, el('b', null, sg(b1.at(-1)?.[1], 2) + ' điểm %'), '.');
+    ir.append(`Ngày ${dmy(imp.at(-1)[0])}: lãi suất VND hàm ý ${T}M từ swap `, el('b', null, vn(iv, 2) + '%'), iv >= v1 ? ', cao hơn VNIBOR 1M ' : ', thấp hơn VNIBOR 1M ', el('b', null, vn(v1, 2) + '%'), ': phần bù kỳ hạn ', el('b', null, sg(iv - v1, 2) + ' điểm %'), ` (${T}M so với 1M). ` + (vnT && vnT.pts.at(-1)[0] >= last - 14 * DAY ? `VNIBOR ${T}M (${vn(vnT.pts.at(-1)[1], 2)}%) chỉ là fixing không có giao dịch, nên không dùng để tính basis. ` : '') + `Basis dưới đây tính ở kỳ hạn 1M: `, el('b', null, sg(b1.at(-1)?.[1], 2) + ' điểm %'), '.');
   } else if (imp.length && bT.length) {
     const b = bT.at(-1)[1], b4 = atOrBefore(bT, bT.at(-1)[0] - 28 * DAY);
     const yr = bT.filter((p) => p[0] > bT.at(-1)[0] - 364 * DAY).map((p) => p[1]);
