@@ -224,16 +224,26 @@ table.st{border-collapse:collapse;width:100%;font-size:13px;min-width:860px}
   <!-- ===================== ÁP LỰC TỶ GIÁ ===================== -->
   <section id="ap-luc" class="page" style="display:flex;flex-direction:column;gap:20px" hidden>
     <section class="panel">
-      <h2 class="rh">Bảng áp lực tỷ giá theo tuần<div class="rule"></div></h2>
-      <p class="unit">Mỗi ô là z-score 52 tuần của chỉ báo tại phiên cuối tuần: (giá trị − trung bình 52 tuần) / độ lệch chuẩn 52 tuần. Mọi dòng đã đổi dấu để đỏ = áp lực VND mất giá, xanh = VND được hỗ trợ. Cột cuối là giá trị thực tuần gần nhất</p>
+      <h2 class="rh">Chỉ báo dẫn dắt: carry VND − USD<div class="rule"></div></h2>
+      <p class="unit">Carry = VNIBOR − lãi suất USD cùng kỳ hạn (ON: SOFR; 1M: SOFR bình quân). Đây là chỉ báo duy nhất trên trang qua được kiểm định (26/11/2026): carry càng thấp hoặc càng âm thì 3–6 tháng sau USD/VND càng có xu hướng tăng, ổn định ở cả 2021–2023 và 2024–2026. Đây là quan hệ thống kê, không phải dự báo</p>
+      <p class="read" id="cyRead"></p>
+      <div class="grid2">
+        <div><div class="ctitle">Carry VND − USD (ON và 1M)</div><p class="unit">Điểm %. Vùng tô nhạt: carry âm, giữ VND lỗ carry so với USD</p><div class="chart" id="s-carry"></div></div>
+        <div><div class="ctitle">Carry 1M và % thay đổi USD/VND 13 tuần sau</div><p class="unit">Mỗi chấm là một tuần trong toàn bộ lịch sử. Đường đỏ: hồi quy tuyến tính. Vạch đứt dọc: carry 1M tuần này (chưa biết kết quả)</p><div class="chart" id="cy-scat"></div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="rh">Bản đồ hiện trạng theo tuần<div class="rule"></div></h2>
+      <p class="unit">Mỗi ô là z-score 52 tuần của chỉ báo tại phiên cuối tuần. Đỏ: đang lệch về phía căng hơn bình thường; xanh: dịu hơn bình thường. Bảng mô tả hiện trạng từng chỉ báo, không cộng gộp và không phải dự báo: kiểm định cho thấy chỉ số tổng hợp không báo trước được tỷ giá, nên đã bỏ. Cột cuối là giá trị thực tuần gần nhất</p>
       <p class="read" id="pbRead"></p>
       <div class="scroll"><table class="pb" id="pb"></table></div>
-      <div class="legend"><span>VND được hỗ trợ</span><canvas id="lg2" width="160" height="10"></canvas><span>Áp lực mất giá</span><span>· thang màu bão hoà tại ±2,5σ</span></div>
+      <div class="legend"><span>Dịu hơn bình thường</span><canvas id="lg2" width="160" height="10"></canvas><span>Căng hơn bình thường</span><span>· thang màu bão hoà tại ±2,5σ</span></div>
     </section>
 
     <section class="panel">
       <h2 class="rh">Bảng chỉ báo căng thẳng tỷ giá<div class="rule"></div></h2>
-      <p class="unit">Trạng thái tính tự động từ dữ liệu mới nhất theo ngưỡng ở cột thứ ba. Giá ngân hàng = USD/VND liên ngân hàng; giá tự do = giá mua tự do trong file</p>
+      <p class="unit">Trạng thái tính tự động từ dữ liệu mới nhất theo ngưỡng ở cột thứ ba. Ngưỡng là tự đặt, chưa hiệu chỉnh trên dữ liệu: bảng phản ánh hiện trạng, không phải cảnh báo sớm. Riêng dòng carry đã được kiểm định có giá trị dẫn dắt 3–6 tháng. Giá ngân hàng = USD/VND liên ngân hàng; giá tự do = giá mua tự do trong file</p>
       <div class="scroll"><table class="st" id="stTbl"><thead><tr><th>Chỉ báo</th><th>Đo điều gì</th><th>Ngưỡng căng thẳng</th><th>Hiện tại</th><th>Trạng thái</th></tr></thead><tbody></tbody></table></div>
     </section>
 
@@ -251,19 +261,12 @@ table.st{border-collapse:collapse;width:100%;font-size:13px;min-width:860px}
       <h2 class="rh">Chỉ báo căng thẳng chi tiết<div class="rule"></div></h2>
       <div class="grid2">
         <div><div class="ctitle">1. Số phiên sát trần trong 20 phiên gần nhất</div><p class="unit">Phiên sát trần: liên ngân hàng cách trần dưới 0,3%. Vạch đứt: 10 phiên (một nửa thời gian)</p><div class="chart" id="s-ceil"></div></div>
-        <div><div class="ctitle">4a. Carry VND − USD (ON và 1M)</div><p class="unit">Điểm % = VNIBOR − lãi suất USD cùng kỳ hạn (ON: SOFR; 1M: SOFR bình quân). Chỉ dùng kỳ hạn có thanh khoản (đến 1M). Dưới 0: giữ VND lỗ carry so với USD</p><div class="chart" id="s-carry"></div></div>
-        <div><div class="ctitle">4b. Độ dốc đường cong swap gap onshore</div><p class="unit">Điểm % = swap gap 6M − swap gap 1M. Âm: đường cong đảo dốc, kỳ hạn ngắn đắt hơn kỳ hạn dài</p><div class="chart" id="s-curve"></div></div>
-        <div><div class="ctitle">5. VNIBOR qua đêm và các phiên tăng vọt</div><p class="unit">Chấm đỏ: vượt trung vị 20 phiên trước hơn 150 bps, ngoài mùa vụ. Chấm xám: tăng vọt trong mùa vụ (quanh Tết, 3 phiên cuối tháng, phiên đầu tháng)</p><div class="chart" id="s-on"></div></div>
+        <div><div class="ctitle">4. Độ dốc đường cong swap gap onshore</div><p class="unit">Điểm % = swap gap 6M − swap gap 1M. Âm: đường cong đảo dốc, kỳ hạn ngắn đắt hơn kỳ hạn dài</p><div class="chart" id="s-curve"></div></div>
+        <div><div class="ctitle">5. VNIBOR qua đêm và các phiên tăng vọt</div><p class="unit">Chấm đỏ: phiên VNIBOR ON vượt trung vị 20 phiên trước hơn 150 bps</p><div class="chart" id="s-on"></div></div>
       </div>
       <p class="read" id="stRead"></p>
     </section>
 
-    <section class="panel">
-      <h2 class="rh">Giá tự do có đi trước liên ngân hàng không?<div class="rule"></div></h2>
-      <p class="unit">Tương quan giữa thay đổi chênh lệch tự do tuần t và % thay đổi tỷ giá liên ngân hàng tuần t+k, toàn bộ lịch sử. Vạch đứt = ngưỡng có ý nghĩa thống kê xấp xỉ (±2/√n)</p>
-      <div class="chart" id="c-lag"></div>
-      <p class="read" id="lagRead"></p>
-    </section>
   </section>
 
   <!-- ===================== SWAP & NDF ===================== -->
@@ -326,7 +329,7 @@ table.st{border-collapse:collapse;width:100%;font-size:13px;min-width:860px}
       <p class="unit">Trái: z-score 52 tuần (theo tuần) của chênh lệch vàng (%) và chênh lệch USD tự do − liên ngân hàng (%), cùng thang để so nhịp. Phải: tương quan giữa thay đổi chênh lệch vàng tuần t và thay đổi chênh lệch USD tự do tuần t+k, toàn bộ lịch sử</p>
       <div class="grid2">
         <div><div class="ctitle">Chênh lệch vàng và chênh lệch USD tự do (z-score)</div><div class="chart" id="g-z"></div></div>
-        <div><div class="ctitle">Chênh lệch vàng có đi trước chênh lệch USD tự do không?</div><div class="chart" id="g-lag"></div></div>
+        <div><div class="ctitle">Chênh lệch vàng có đi trước chênh lệch USD tự do không? (chưa ổn định)</div><div class="chart" id="g-lag"></div></div>
       </div>
       <p class="read" id="gLagRead"></p>
     </section>
@@ -810,7 +813,7 @@ const SD = {
   carry: (k) => k === 'ON' ? joinRoles(['vnON', 'usdON'], (a, b) => a - b) : joinRoles(['vn' + k, 'usd' + k], (a, b) => a - b),
   slope: () => joinRoles(['lnh', 'sw6', 'sw1'], (s, a, b, t) => (a / s * 365 / days(t, 6) - b / s * 365 / days(t, 1)) * 100),
   onExcess: () => { const o = R('vnON'); if (!o) return []; const p = o.pts; return p.map((q, i) => { if (i < STRESS.onWin) return null; const med = d3.median(p.slice(i - STRESS.onWin, i), (x) => x[1]); return [q[0], q[1] - med]; }).filter(Boolean); },
-  onSpikes: () => { const o = R('vnON'); if (!o) return []; const cal = o.pts.map((p) => p[0]); return SD.onExcess().filter((p) => p[1] > STRESS.onSpike).map((p) => ({t: p[0], ex: p[1], v: atOrBefore(o.pts, p[0])[1], seas: seasonal(p[0], cal)})); },
+  onSpikes: () => { const o = R('vnON'); if (!o) return []; const cal = o.pts.map((p) => p[0]); return SD.onExcess().filter((p) => p[1] > STRESS.onSpike).map((p) => ({t: p[0], ex: p[1], v: atOrBefore(o.pts, p[0])[1]})); },
 };
 const DER = {
   ceil: () => joinRoles(['central'], (c) => c * 1.05),
@@ -1445,20 +1448,68 @@ function renderCredit() {
 }
 
 // ---------- stress indicators ----------
+function scatterFit(host, pts, xNow, opts) {
+  host.replaceChildren();
+  if (pts.length < 20) return noData(host, opts.empty);
+  const pal = palette();
+  const W = Math.max(280, host.clientWidth || 600), H = opts.height || 260;
+  const svg = d3.select(host).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const xe = d3.extent([...xs, xNow ?? xs[0]]), ye = d3.extent(ys);
+  const x = d3.scaleLinear([xe[0] - 0.3, xe[1] + 0.3], [44, W - 12]).nice();
+  const y = d3.scaleLinear([ye[0] - 0.5, ye[1] + 0.5], [H - 30, 10]).nice();
+  const g = svg.append('g');
+  g.append('g').attr('transform', `translate(0,${H - 30})`).call(d3.axisBottom(x).ticks(6).tickFormat((v) => vn(v, 1))).attr('font-size', null).attr('font-family', null)
+    .call((a) => { a.selectAll('text').style('fill', 'var(--muted)').style('font-size', '11px'); a.selectAll('line,path').style('stroke', 'var(--line)'); });
+  g.append('g').attr('transform', 'translate(44,0)').call(d3.axisLeft(y).ticks(5).tickSize(-(W - 56)).tickFormat((v) => vn(v, 0) + '%')).attr('font-size', null).attr('font-family', null)
+    .call((a) => { a.select('.domain').remove(); a.selectAll('line').style('stroke', 'var(--line)'); a.selectAll('text').style('fill', 'var(--muted)').style('font-size', '11px'); });
+  g.append('line').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 10).attr('y2', H - 30).style('stroke', 'var(--muted)');
+  g.append('line').attr('x1', 44).attr('x2', W - 12).attr('y1', y(0)).attr('y2', y(0)).style('stroke', 'var(--muted)');
+  pts.forEach((p) => g.append('circle').attr('cx', x(p[0])).attr('cy', y(p[1])).attr('r', 2.6).style('fill', pal[1]).style('opacity', 0.45));
+  const {a, b} = opts.fit;
+  const xa = x.domain();
+  g.append('line').attr('x1', x(xa[0])).attr('x2', x(xa[1])).attr('y1', y(a + b * xa[0])).attr('y2', y(a + b * xa[1])).style('stroke', pal[0]).style('stroke-width', 2.2);
+  if (xNow != null) {
+    g.append('line').attr('x1', x(xNow)).attr('x2', x(xNow)).attr('y1', 10).attr('y2', H - 30).style('stroke', pal[0]).style('stroke-dasharray', '5 4');
+    g.append('circle').attr('cx', x(xNow)).attr('cy', y(a + b * xNow)).attr('r', 5).style('fill', pal[0]);
+    g.append('text').attr('x', x(xNow) + 7).attr('y', 22).style('font-size', '11px').style('font-weight', 700).style('fill', pal[0]).style('paint-order', 'stroke').style('stroke', 'var(--panel)').style('stroke-width', 3).text('Tuần này ' + sg(xNow, 2));
+  }
+  g.append('text').attr('x', W - 12).attr('y', H - 4).attr('text-anchor', 'end').style('font-size', '10.5px').style('fill', 'var(--muted)').text(opts.xLabel);
+}
+function renderCarryLead(st) {
+  const pal = palette();
+  const cON = SD.carry('ON'), c1 = SD.carry('1');
+  const allC = [...cON, ...c1].filter((p) => p[0] >= st).map((p) => p[1]);
+  lineChart(document.getElementById('s-carry'), [{name: '1M', color: pal[0], pts: clip(c1, st)}, {name: 'ON', color: pal[1], pts: clip(cON, st), width: 1.3}],
+    {height: 260, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), tip: (v) => sg(v, 2) + ' điểm %', bands: allC.length && d3.min(allC) < 0 ? [{lo: d3.min(allC) - 0.3, hi: 0, color: css('--red'), op: 0.06}] : [], empty: 'Cần VNIBOR và lãi suất USD.'});
+  const L = R('lnh'); const rd = document.getElementById('cyRead'); rd.replaceChildren();
+  if (!L || !c1.length) { noData(document.getElementById('cy-scat'), 'Cần VNIBOR 1M, lãi suất USD 1M và USD/VND.'); return; }
+  const wl = weekly(L.pts), wc = weekly(c1);
+  const lk = new Map(wl.map((p) => [wkKey(p[0]), p[1]]));
+  const pairs = wc.map((p) => { const k = wkKey(p[0]); const a = lk.get(k), b = lk.get(k + 13); return a && b ? [p[1], (b / a - 1) * 100] : null; }).filter(Boolean);
+  if (pairs.length < 20) { noData(document.getElementById('cy-scat')); return; }
+  const mx = d3.mean(pairs, (p) => p[0]), my = d3.mean(pairs, (p) => p[1]);
+  let sxy = 0, sxx = 0, syy = 0; pairs.forEach(([x, y]) => { sxy += (x - mx) * (y - my); sxx += (x - mx) ** 2; syy += (y - my) ** 2; });
+  const b = sxy / sxx, a = my - b * mx, r = sxy / Math.sqrt(sxx * syy);
+  const res = pairs.map(([x, y]) => y - (a + b * x)); const sd = d3.deviation(res);
+  const xNow = c1.at(-1)[1], yhat = a + b * xNow;
+  scatterFit(document.getElementById('cy-scat'), pairs, xNow, {fit: {a, b}, height: 260, xLabel: 'Carry 1M, điểm %'});
+  rd.append(`Carry 1M ngày ${dmy(c1.at(-1)[0])}: `, el('b', null, sg(xNow, 2) + ' điểm %'), `; carry ON `, el('b', null, sg(cON.at(-1)?.[1], 2) + ' điểm %'), '. ');
+  rd.append(`Trên ${vn(pairs.length)} tuần lịch sử (khoảng ${Math.floor(pairs.length / 13)} quan sát 13 tuần không chồng nhau), mỗi 1 điểm % carry thấp hơn ứng với USD/VND 13 tuần sau tăng thêm khoảng `, el('b', null, vn(-b, 2) + '%'), ` (tương quan ${sg(r, 2)}). Với carry hiện tại, mức tương ứng trên đường hồi quy là `, el('b', null, sg(yhat, 2) + '%'), `, nhưng sai số lịch sử rất rộng: khoảng 90% các tuần nằm trong ±${vn(1.645 * sd, 1)} điểm % quanh đường này. `);
+  rd.append('Quan hệ chủ yếu đến từ giai đoạn carry âm kéo dài 2023–2024; carry 1M dùng SOFR bình quân. Đọc như hướng nghiêng của rủi ro, không như con số dự báo.');
+}
 function renderStress(st) {
+  renderCarryLead(st);
   const pal = palette();
   const cc = SD.ceilCount();
   if (cc.length) lineChart(document.getElementById('s-ceil'), [{name: 'Số phiên', color: pal[0], pts: clip(cc, st)}], {height: 230, fmt: (v) => vn(v, 0), end: (v) => vn(v, 0) + ' phiên', refs: [{v: STRESS.ceilBad, label: 'Nửa thời gian', color: css('--red')}]});
   else noData(document.getElementById('s-ceil'), 'Cần tỷ giá trung tâm.');
   const cON = SD.carry('ON'), c1 = SD.carry('1');
-  const allC = [...cON, ...c1].filter((p) => p[0] >= st).map((p) => p[1]);
-  lineChart(document.getElementById('s-carry'), [{name: '1M', color: pal[0], pts: clip(c1, st)}, {name: 'ON', color: pal[1], pts: clip(cON, st), width: 1.3}],
-    {height: 250, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), tip: (v) => sg(v, 2) + ' điểm %', bands: allC.length && d3.min(allC) < 0 ? [{lo: d3.min(allC) - 0.3, hi: 0, color: css('--red'), op: 0.06}] : [], empty: 'Cần VNIBOR và lãi suất USD.'});
   const sl = SD.slope();
   lineChart(document.getElementById('s-curve'), [{name: '6M − 1M', color: pal[0], pts: clip(sl, st)}], {height: 230, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), tip: (v) => sg(v, 2) + ' điểm %', empty: 'Cần Swap 1M và 6M.'});
   const O = R('vnON'), sp = SD.onSpikes();
   if (O) lineChart(document.getElementById('s-on'), [{name: 'VNIBOR ON', color: pal[1], pts: clip(O.pts, st), width: 1.6}], {height: 250, fmt: (v) => vn(v, 0) + '%', end: (v) => vn(v, 2) + '%',
-    marks: sp.filter((s) => s.t >= st).map((s) => ({t: s.t, v: s.v, color: s.seas ? css('--muted') : css('--red'), r: s.seas ? 3 : 4}))});
+    marks: sp.filter((s) => s.t >= st).map((s) => ({t: s.t, v: s.v, color: css('--red'), r: 3.5}))});
   else noData(document.getElementById('s-on'));
   // ---- status table ----
   const tb = document.querySelector('#stTbl tbody'); tb.replaceChildren();
@@ -1475,14 +1526,14 @@ function renderStress(st) {
     !f ? pill('na', 'Chưa có dữ liệu') : f[1] > STRESS.freeBreak ? pill('bad', 'Căng thẳng') : (f[1] > STRESS.freeWarn || over60 > 0) ? pill('warn', 'Theo dõi') : pill('ok', 'Bình thường'));
   row('NHNN bán ngoại tệ và hình thức bán', 'Mức độ dùng dự trữ', 'Chuyển từ tín hiệu sang bán kỳ hạn, sang bán giao ngay quy mô lớn và nới biên độ (2022)', 'Cần nhật ký can thiệp của NHNN', pill('na', 'Chưa có dữ liệu'));
   const c1l = c1.at(-1), neg1 = c1.slice(-STRESS.carryWin).filter((p) => p[1] < 0).length, negON = cON.slice(-STRESS.carryWin).filter((p) => p[1] < 0).length, slL = sl.at(-1);
-  row('Chênh lệch lãi suất VND − USD và điểm kỳ hạn', 'Áp lực carry', 'Carry âm kéo dài (từ 20/63 phiên); đường cong điểm kỳ hạn méo (6M − 1M < 0)',
+  row('Chênh lệch lãi suất VND − USD và điểm kỳ hạn · chỉ báo dẫn dắt (đã kiểm định)', 'Áp lực carry', 'Carry âm kéo dài (từ 20/63 phiên); đường cong điểm kỳ hạn méo (6M − 1M < 0)',
     c1l ? `Carry 1M ${sg(c1l[1], 2)} điểm %; carry âm 63 phiên: 1M ${neg1}, ON ${negON}; độ dốc 6M−1M ${slL ? sg(slL[1], 2) : '—'}` : '—',
     !c1l ? pill('na', 'Chưa có dữ liệu') : (neg1 >= 20 || negON >= 40) ? pill('bad', 'Căng thẳng') : (neg1 > 0 || negON >= 10 || (slL && slL[1] < 0) || c1l[1] < 0.5) ? pill('warn', 'Theo dõi') : pill('ok', 'Bình thường'));
   const lastT = O ? O.pts.at(-1)[0] : 0, cal = O ? O.pts.map((p) => p[0]) : [];
-  const recent = (n) => sp.filter((s) => !s.seas && cal.indexOf(s.t) >= cal.length - n);
+  const recent = (n) => sp.filter((s) => cal.indexOf(s.t) >= cal.length - n);
   const on = O?.pts.at(-1);
-  row('Lãi suất qua đêm VND và phát hành tín phiếu', 'Phản ứng phòng thủ của NHNN', `Qua đêm tăng vọt (> ${vn(STRESS.onSpike * 100, 0)} bps so với trung vị 20 phiên, ngoài mùa vụ); tín phiếu phát hành dày`,
-    on ? `ON ${vn(on[1], 2)}%; ${recent(10).length} phiên tăng vọt ngoài mùa vụ trong 10 phiên, ${recent(40).length} trong 40 phiên; tín phiếu: chưa có dữ liệu` : '—',
+  row('Lãi suất qua đêm VND và phát hành tín phiếu', 'Phản ứng phòng thủ của NHNN', `Qua đêm tăng vọt (> ${vn(STRESS.onSpike * 100, 0)} bps so với trung vị 20 phiên); tín phiếu phát hành dày`,
+    on ? `ON ${vn(on[1], 2)}%; ${recent(10).length} phiên tăng vọt trong 10 phiên, ${recent(40).length} trong 40 phiên; tín phiếu: chưa có dữ liệu` : '—',
     !on ? pill('na', 'Chưa có dữ liệu') : recent(10).length ? pill('bad', 'Căng thẳng') : recent(40).length ? pill('warn', 'Theo dõi') : pill('ok', 'Bình thường'));
   const gs = goldStatus();
   row('Chênh lệch giá vàng SJC so với thế giới', 'Kênh cầu USD phi chính thức', 'Chênh lệch mở rộng đi trước chênh lệch USD tự do. Căng thẳng: z-score 52 tuần ≥ 2; theo dõi: ≥ 1 hoặc nới rộng ≥ 3 điểm % trong 4 tuần',
@@ -1492,9 +1543,7 @@ function renderStress(st) {
   const rd = document.getElementById('stRead'); rd.replaceChildren();
   const longest = (() => { const h = DER.head(); let best = 0, bs = null, be = null, cur = 0, cs = null; h.forEach((p, i) => { if (p[1] < 0.5) { if (!cur) cs = p[0]; cur++; if (cur > best) { best = cur; bs = cs; be = p[0]; } } else cur = 0; }); return {best, bs, be}; })();
   if (longest.best) rd.append(`Chuỗi sát trần dài nhất trong dữ liệu (dư địa < 0,5%): `, el('b', null, `${longest.best} phiên`), ` từ ${dmy(longest.bs)} đến ${dmy(longest.be)}. `);
-  const allSp = sp.filter((s) => !s.seas);
-  if (allSp.length) rd.append(`VNIBOR ON có ${allSp.length} phiên tăng vọt ngoài mùa vụ trong toàn bộ dữ liệu, gần nhất ${dmy(allSp.at(-1).t)} (${vn(allSp.at(-1).v, 2)}%). `);
-  rd.append('Lịch mùa vụ chỉ lọc các đợt quanh Tết và đầu/cuối tháng; các đợt cuối quý trùng cuối tháng nên cũng được coi là mùa vụ. Carry 1M dùng SOFR bình quân nên chỉ để tham khảo cho tới khi có nguồn lãi suất USD thay thế.');
+  if (sp.length) rd.append(`VNIBOR ON có ${sp.length} phiên tăng vọt trong toàn bộ dữ liệu, gần nhất ${dmy(sp.at(-1).t)} (${vn(sp.at(-1).v, 2)}%). Các phiên tăng vọt hay dồn cụm (Tết, cuối tháng, cuối quý) nên một phiên đơn lẻ ít ý nghĩa; nhiều phiên liên tiếp ngoài các mốc đó mới đáng chú ý.`);
 }
 
 // ---------- gold ----------
@@ -1563,6 +1612,7 @@ function renderGold() {
     lr.append(' Đây là tương quan lịch sử, cần kiểm tra theo từng giai đoạn trước khi dùng làm chỉ báo dẫn dắt.');
   }
   else lr.append('Không có độ trễ nào (1–4 tuần) vượt ngưỡng ý nghĩa: trên dữ liệu hiện có, chênh lệch vàng chưa cho thấy khả năng báo trước chênh lệch USD tự do.');
+  lr.append(' Kiểm định 26/11/2026: quan hệ độ trễ 1 tuần chỉ xuất hiện ở 2024–2026, không có ở 2021–2023, và có thể do giờ chốt giá vàng và giá USD tự do lệch nhau. Chỉ để tham khảo.');
   if (Math.abs(ll.cors[0]) > ll.band) lr.append(` Tương quan cùng tuần ${sg(ll.cors[0], 2)} có ý nghĩa: hai chênh lệch thường biến động ${ll.cors[0] > 0 ? 'cùng chiều' : 'ngược chiều'} trong cùng tuần.`);
   // performance
   const base = (arr) => { const a = clip(arr, st); if (!a.length) return []; const b0 = a[0][1]; return a.map((p) => [p[0], (p[1] / b0 - 1) * 100]); };
@@ -1605,25 +1655,24 @@ function renderPressure() {
   weeks.forEach((w) => { const t = (w * 7 - 3 + 4) * DAY; const d = new Date(t); hr.append(el('th', null, `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`)); });
   hr.append(el('th', null, 'Giá trị')); thead.append(hr); tbl.append(thead);
   const tbody = el('tbody');
-  const comp = weeks.map((w) => { const v = zs.map((m) => m.get(w)?.z).filter((z) => z != null); return v.length >= 2 ? d3.mean(v) : null; });
   const addRow = (name, note, cells, val, cls) => {
     const tr = el('tr', cls || ''); const th = el('th', 'y', name); if (note) th.append(el('small', null, note)); tr.append(th);
     cells.forEach((z, i) => { if (z == null) { tr.append(el('td', 'na', '·')); return; } const td = el('td', i === cells.length - 1 ? 'last' : '', sg(z, 1)); td.style.background = color(z); td.style.color = ink(z); tr.append(td); });
     tr.append(el('td', 'val', val)); tbody.append(tr);
   };
   rows.forEach((r, i) => { const last = r.pts.at(-1); addRow(r.name, r.note, weeks.map((w) => zs[i].get(w)?.z ?? null), last ? r.fmt(last[1]) : 'chưa có'); });
-  addRow('Chỉ số áp lực tổng hợp', 'trung bình z-score các dòng có dữ liệu', comp, comp.at(-1) == null ? '—' : sg(comp.at(-1), 2) + 'σ', 'comp');
   tbl.append(tbody);
   const c = document.getElementById('lg2').getContext('2d');
   for (let i = 0; i < 160; i++) { c.fillStyle = color((i / 159) * 5 - 2.5); c.fillRect(i, 0, 1, 10); }
   const read = document.getElementById('pbRead'); read.replaceChildren();
-  const lastC = comp.at(-1), prevC = comp.at(-2);
-  if (lastC != null) {
-    const lvl = lastC > 1 ? 'cao hơn đáng kể so với mức bình thường 52 tuần' : lastC > 0.3 ? 'nhỉnh hơn mức bình thường' : lastC < -1 ? 'thấp hơn đáng kể, VND đang được hỗ trợ' : lastC < -0.3 ? 'thấp hơn mức bình thường' : 'quanh mức bình thường';
-    const top = rows.map((r, i) => ({r, z: zs[i].get(weeks.at(-1))?.z})).filter((x) => x.z != null).sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
-    read.append('Tuần gần nhất, chỉ số áp lực tổng hợp ở ', el('b', null, sg(lastC, 2) + 'σ'), ` (${lvl}${prevC != null ? ', tuần trước ' + sg(prevC, 2) + 'σ' : ''}).`);
-    if (top) read.append(' Chỉ báo lệch nhiều nhất: ', el('b', null, `${top.r.name} ${sg(top.z, 1)}σ`), '.');
-    read.append(' Trọng số đang để bằng nhau và chưa kiểm định ngược, nên dùng để đọc xu hướng, không dùng làm tín hiệu giao dịch.');
+  const cur = rows.map((r, i) => ({r, z: zs[i].get(weeks.at(-1))?.z})).filter((x) => x.z != null);
+  const hot = cur.filter((x) => x.z >= 1).sort((a, b) => b.z - a.z), cool = cur.filter((x) => x.z <= -1).sort((a, b) => a.z - b.z);
+  if (cur.length) {
+    read.append('Tuần gần nhất: ');
+    read.append(hot.length ? el('b', null, 'căng hơn bình thường: ' + hot.map((x) => `${x.r.name} (${sg(x.z, 1)}σ)`).join(', ')) : 'không chỉ báo nào căng hơn bình thường quá 1σ');
+    read.append('; ');
+    read.append(cool.length ? 'dịu hơn bình thường: ' + cool.map((x) => `${x.r.name} (${sg(x.z, 1)}σ)`).join(', ') : 'không chỉ báo nào dịu hơn bình thường quá 1σ');
+    read.append('.');
   }
   // band chart
   const L = R('lnh'); if (!L) return;
@@ -1636,29 +1685,11 @@ function renderPressure() {
   if (Cn) list.push({name: 'Trung tâm', color: pal[2], pts: clip(Cn.pts, st), dash: '2 3', width: 1.4});
   lineChart(document.getElementById('c-band'), list, {height: 320, fmt: (v) => vn(v, 0), end: (v) => vn(v, 0)});
   // free spread with bands
-  const fr = DER.free();
   freeSpreadChart(document.getElementById('c-free'), st, 240);
   const hd = DER.head();
   if (hd.length) lineChart(document.getElementById('c-head'), [{name: 'Dư địa', color: pal[0], pts: clip(hd, st)}], {height: 240, zero: true, fmt: (v) => vn(v, 1) + '%', end: (v) => vn(v, 2) + '%'});
   else noData(document.getElementById('c-head'), 'Cần tỷ giá trung tâm.');
   renderStress(st);
-  // lead-lag (full history, weekly)
-  const wl = weekly(L.pts), wf = weekly(fr);
-  const mL = new Map(wl.map((p) => [wkKey(p[0]), p[1]])), mF = new Map(wf.map((p) => [wkKey(p[0]), p[1]]));
-  const ks = Array.from(mF.keys()).filter((k) => mL.has(k) && mF.has(k - 1) && mL.has(k - 1)).sort((a, b) => a - b);
-  const dF = new Map(ks.map((k) => [k, mF.get(k) - mF.get(k - 1)])), dL = new Map(ks.map((k) => [k, (mL.get(k) / mL.get(k - 1) - 1) * 100]));
-  const lags = [0, 1, 2, 3, 4], cors = [];
-  let nMin = Infinity;
-  for (const k of lags) { const xs = [], ys = []; for (const w of ks) if (dL.has(w + k)) { xs.push(dF.get(w)); ys.push(dL.get(w + k)); } nMin = Math.min(nMin, xs.length); const mx = d3.mean(xs), my = d3.mean(ys); let sxy = 0, sxx = 0, syy = 0; xs.forEach((x, i) => { sxy += (x - mx) * (ys[i] - my); sxx += (x - mx) ** 2; syy += (ys[i] - my) ** 2; }); cors.push(sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0); }
-  const band = nMin > 10 && isFinite(nMin) ? 2 / Math.sqrt(nMin) : 0;
-  if (ks.length > 20) {
-    barChart(document.getElementById('c-lag'), lags.map((k) => k === 0 ? 'Cùng tuần' : `Sau ${k} tuần`), cors, {band, height: 220});
-    const sig = lags.filter((k, i) => k > 0 && Math.abs(cors[i]) > band);
-    const lr = document.getElementById('lagRead'); lr.replaceChildren();
-    lr.append(`Mẫu: ${vn(nMin)} tuần. `);
-    if (sig.length) lr.append('Có tương quan vượt ngưỡng ở độ trễ ', el('b', null, sig.map((k) => k + ' tuần').join(', ')), ': khi chênh lệch tự do nới rộng, tỷ giá liên ngân hàng có xu hướng ' + (cors[lags.indexOf(sig[0])] > 0 ? 'tăng' : 'giảm') + ' trong các tuần sau. Đây là tương quan trên dữ liệu lịch sử, cần kiểm tra độ ổn định theo từng giai đoạn trước khi dùng làm chỉ báo dẫn dắt.');
-    else lr.append('Không có độ trễ nào (1–4 tuần) vượt ngưỡng ý nghĩa: trên dữ liệu hiện có, chênh lệch tự do chưa cho thấy khả năng dự báo tỷ giá liên ngân hàng các tuần sau.' + (Math.abs(cors[0]) > band ? ' Tương quan cùng tuần có ý nghĩa nhưng một phần là cơ học: tỷ giá liên ngân hàng nằm ngay trong công thức chênh lệch, nên khi liên ngân hàng tăng mà giá tự do đứng yên thì chênh lệch tự hẹp lại.' : ''));
-  } else noData(document.getElementById('c-lag'), 'Cần ít nhất 20 tuần dữ liệu giá tự do và liên ngân hàng.');
 }
 
 // ---------- render: swap & NDF ----------
@@ -1689,6 +1720,7 @@ function renderSwap() {
     const yr = bT.filter((p) => p[0] > bT.at(-1)[0] - 364 * DAY).map((p) => p[1]);
     ir.append(`Ngày ${dmy(imp.at(-1)[0])}: lãi suất VND hàm ý ${T}M `, el('b', null, vn(imp.at(-1)[1], 2) + '%'), ` so với VNIBOR ${T}M `, el('b', null, vn(vnT.pts.at(-1)[1], 2) + '%'), ', basis ', el('b', null, sg(b, 2) + ' điểm %'));
     if (b4) ir.append(` (4 tuần trước ${sg(b4[1], 2)})`);
+    if (Math.abs(b) < 0.5) ir.append('. Basis đang trong vùng ±0,5 điểm %: dấu chưa đáng tin vì chỉ cần đổi nguồn lãi suất USD là có thể đảo dấu (kiểm định: đảo dấu ở 7% số phiên)');
     ir.append(`. Khoảng 52 tuần: ${sg(d3.min(yr), 2)} đến ${sg(d3.max(yr), 2)}. ` + (b < 0 ? 'Basis âm: điểm swap thấp hơn mức chênh lãi suất VND–USD, tức trong nước đang thừa USD hoặc thiếu VND.' : 'Basis dương: điểm swap cao hơn mức chênh lãi suất, tức cầu mua USD kỳ hạn mạnh hoặc thiếu USD trong nước.'));
   }
   // NDF
