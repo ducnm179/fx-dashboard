@@ -250,7 +250,7 @@ table.st{border-collapse:collapse;width:100%;font-size:13px;min-width:860px}
       <h2 class="rh">Chỉ báo căng thẳng chi tiết<div class="rule"></div></h2>
       <div class="grid2">
         <div><div class="ctitle">1. Số phiên sát trần trong 20 phiên gần nhất</div><p class="unit">Phiên sát trần: liên ngân hàng cách trần dưới 0,3%. Vạch đứt: 10 phiên (một nửa thời gian)</p><div class="chart" id="s-ceil"></div></div>
-        <div><div class="ctitle">4a. Carry VND − USD theo kỳ hạn</div><p class="unit">Điểm % = VNIBOR − lãi suất USD cùng kỳ hạn (ON: SOFR; 1M/3M: SOFR bình quân). Dưới 0: giữ VND lỗ carry so với USD</p><div class="chart" id="s-carry"></div></div>
+        <div><div class="ctitle">4a. Carry VND − USD (ON và 1M)</div><p class="unit">Điểm % = VNIBOR − lãi suất USD cùng kỳ hạn (ON: SOFR; 1M: SOFR bình quân). Chỉ dùng kỳ hạn có thanh khoản (đến 1M). Dưới 0: giữ VND lỗ carry so với USD</p><div class="chart" id="s-carry"></div></div>
         <div><div class="ctitle">4b. Độ dốc đường cong swap gap onshore</div><p class="unit">Điểm % = swap gap 6M − swap gap 1M. Âm: đường cong đảo dốc, kỳ hạn ngắn đắt hơn kỳ hạn dài</p><div class="chart" id="s-curve"></div></div>
         <div><div class="ctitle">5. VNIBOR qua đêm và các phiên tăng vọt</div><p class="unit">Chấm đỏ: vượt trung vị 20 phiên trước hơn 150 bps, ngoài mùa vụ. Chấm xám: tăng vọt trong mùa vụ (quanh Tết, 3 phiên cuối tháng, phiên đầu tháng)</p><div class="chart" id="s-on"></div></div>
       </div>
@@ -277,7 +277,7 @@ table.st{border-collapse:collapse;width:100%;font-size:13px;min-width:860px}
       <p class="read" id="impRead"></p>
       <div class="grid2">
         <div><div class="ctitle" id="t-imp">Hàm ý, VNIBOR và SOFR</div><div class="chart" id="c-imp"></div></div>
-        <div><div class="ctitle">Basis = lãi suất VND hàm ý − VNIBOR cùng kỳ hạn</div><p class="unit">Đơn vị: điểm %. Dương: điểm swap cao hơn mức chênh lãi suất, cầu mua USD kỳ hạn mạnh/thiếu USD. Âm: thừa USD hoặc thiếu VND</p><div class="chart" id="c-basis"></div></div>
+        <div><div class="ctitle">Basis 1M = lãi suất VND hàm ý 1M − VNIBOR 1M</div><p class="unit">Đơn vị: điểm %. Chỉ tính ở 1M vì lãi suất VND liên ngân hàng kỳ hạn dài hơn không có thanh khoản. Dương: cầu mua USD kỳ hạn mạnh/thiếu USD. Âm: thừa USD hoặc thiếu VND. Khi chọn 3M/6M, nét đứt là phần bù kỳ hạn = hàm ý 3M/6M − VNIBOR 1M</p><div class="chart" id="c-basis"></div></div>
       </div>
     </section>
 
@@ -399,8 +399,8 @@ const ROLES = [
   {role: 'vnON', name: 'VNIBOR ON', unit: '%', group: 'rate', re: /^VNIVNDOND=|LNH VND ON/i, clean: false},
   {role: 'vn1W', name: 'VNIBOR 1W', unit: '%', group: 'rate', re: /^VNIVNDSWD=|LNH VND 1W/i, clean: false},
   {role: 'vn1', name: 'VNIBOR 1M', unit: '%', group: 'rate', re: /^VNIVND1MD=|LNH VND 1M/i, clean: false},
-  {role: 'vn3', name: 'VNIBOR 3M', unit: '%', group: 'rate', re: /^VNIVND3MD=|LNH VND 3M/i, clean: false},
-  {role: 'vn6', name: 'VNIBOR 6M', unit: '%', group: 'rate', re: /^VNIVND6MD=|LNH VND 6M/i, clean: false},
+  {role: 'vn3', name: 'VNIBOR 3M', unit: '%', group: 'rate', re: /^VNIVND3MD=|LNH VND 3M/i, clean: false, illiquid: true},
+  {role: 'vn6', name: 'VNIBOR 6M', unit: '%', group: 'rate', re: /^VNIVND6MD=|LNH VND 6M/i, clean: false, illiquid: true},
   {role: 'usdON', name: 'SOFR ON', unit: '%', group: 'rate', re: /^USDSOFR=|^SOFR \(|^SOFR ON/i, clean: false},
   {role: 'usd1', name: 'Lãi suất USD 1M', unit: '%', group: 'rate', re: /^USD 1M|SOFR.*1M|1M.*SOFR|TSFR1M/i, clean: false},
   {role: 'usd3', name: 'Lãi suất USD 3M', unit: '%', group: 'rate', re: /^USD 3M|SOFR.*3M|3M.*SOFR|TSFR3M/i, clean: false},
@@ -408,6 +408,7 @@ const ROLES = [
   {role: 'dxy', name: 'DXY', unit: 'điểm', group: 'fx', re: /^\.DXY|^DXY/i, clean: false},
 ];
 const ROLE = Object.fromEntries(ROLES.map((r) => [r.role, r]));
+const ILLIQ = (role) => !!ROLE[role]?.illiquid; // VNIBOR > 1M: fixing, không có thanh khoản
 const NDF_SINCE = '2021-12-01';
 const GROUPS = {fx: 'Tỷ giá', rate: 'Lãi suất', gap: 'Swap gap', pts: 'Điểm swap/NDF', macro: 'Tín dụng/Huy động', other: 'Khác'};
 const isAvg = (key) => /AVG/i.test(key || '');
@@ -962,7 +963,7 @@ function renderHeader() {
   const hl = document.getElementById('headline');
   const L = R('lnh'); if (!L) { hl.textContent = 'Theo dõi hàng tuần'; take.textContent = 'Nạp file Excel hoặc CSV để bắt đầu.'; return; }
   const m = metrics(L);
-  const head = DER.head().at(-1), fr = DER.free().at(-1), bs = DER.basis(3).at(-1);
+  const head = DER.head().at(-1), fr = DER.free().at(-1), bs = DER.basis(1).at(-1);
   hl.textContent = `USD/VND ${vn(m.v)}, ${chgTxt(L, m.w)} trong tuần, ${chgTxt(L, m.ytd)} từ đầu năm`;
   take.append('Liên ngân hàng đóng cửa ', el('b', null, vn(m.v)), ` ngày ${dmy(m.t)}`);
   if (head) take.append(', cách trần biên độ ', el('b', null, vn(head[1], 2) + '%'));
@@ -972,11 +973,11 @@ function renderHeader() {
   if (sg3) take.append(' Swap gap 3M onshore ', el('b', null, vn(sg3[1], 2) + '%/năm'));
   if (gp) take.append(', spread NDF − onshore ', el('b', null, sg(gp[1], 2) + ' điểm %'), gp[1] > 0 ? ' (offshore định giá VND mất giá nhanh hơn).' : ' (offshore không lo hơn onshore).');
   else if (sg3) take.append('.');
-  if (bs && !usdWarn()) take.append(' Basis swap 3M ', el('b', null, sg(bs[1], 2) + ' điểm %'), '.');
+  if (bs && !usdWarn()) take.append(' Basis swap 1M ', el('b', null, sg(bs[1], 2) + ' điểm %'), '.');
 }
 
 // ---------- render: overview ----------
-const TILE_ROLES = ['lnh', 'central', 'free', 'dxy', 'vnON', 'vn3', 'usd3', 'sw3', 'ndf3'];
+const TILE_ROLES = ['lnh', 'central', 'free', 'dxy', 'vnON', 'vn1', 'usd1', 'sw3', 'ndf3'];
 const titleOf = (s, sep) => s.name + (s.unit && s.unit !== 'VND/USD' ? sep + s.unit + (sep === ' (' ? ')' : '') : '');
 function renderOverview(vis) {
   const tiles = document.getElementById('tiles'); tiles.replaceChildren();
@@ -1005,8 +1006,16 @@ function renderOverview(vis) {
   for (const [title, list] of groupsR) {
     if (!list.length) continue;
     const last = Math.max(...list.map((s) => s.pts.at(-1)[0])), st = startFor(S.period, last);
-    addBox(rBox, title, (c) => lineChart(c, list.map((s, i) => ({name: s.name, color: pal[i % pal.length], pts: clip(s.pts, st)})), {height: 280, fmt: (v) => vn(v, 1) + '%', end: (v) => vn(v, 2) + '%'}));
+    addBox(rBox, title + (list.some((s) => ILLIQ(s.role)) ? ' · nét đứt: kỳ hạn > 1M chỉ là fixing, không có thanh khoản' : ''), (c) => lineChart(c, list.map((s, i) => ({name: s.name, color: ILLIQ(s.role) ? css('--muted') : pal[i % pal.length], pts: clip(s.pts, st), dash: ILLIQ(s.role) ? '4 3' : null, width: ILLIQ(s.role) ? 1.2 : null})), {height: 280, fmt: (v) => vn(v, 1) + '%', end: (v) => vn(v, 2) + '%'}));
   }
+  // đường cong VND thị trường: VNIBOR ON/1W/1M (có thanh khoản) + hàm ý từ swap 3M/6M
+  if (R('vnON') && R('vn1')) addBox(rBox, 'Đường cong lãi suất VND thị trường: VNIBOR đến 1M, hàm ý từ swap cho 3M và 6M', (c) => {
+    const cats = ['ON', '1W', '1M', '3M (swap)', '6M (swap)'];
+    const lastT = R('vnON').pts.at(-1)[0];
+    const at = (pts, t) => { const p = t == null ? pts.at(-1) : atOrBefore(pts, t); return p ? p[1] : null; };
+    const curve = (t) => [at(R('vnON').pts, t), R('vn1W') ? at(R('vn1W').pts, t) : null, at(R('vn1').pts, t), at(DER.imp(3), t), at(DER.imp(6), t)];
+    catChart(c, cats, [{name: 'Hiện tại', color: pal[0], vals: curve(null), labels: true}, {name: '1 tháng trước', color: pal[1], vals: curve(addMonths(lastT, -1))}, {name: '3 tháng trước', color: pal[2], vals: curve(addMonths(lastT, -3))}], {height: 280, fmt: (v) => vn(v, 1) + '%', end: (v) => vn(v, 2) + '%'});
+  });
   const pt = vis.filter((s) => s.group === 'gap' || isPts(s));
   const pBox = document.getElementById('pts'); pBox.replaceChildren();
   const groupsP = [['Swap gap onshore (swap liên ngân hàng)', pt.filter((s) => /^sw/.test(s.role))], ['Swap gap offshore (NDF)', pt.filter((s) => /^ndf/.test(s.role))], ['Điểm khác (đồng)', pt.filter((s) => !/^(sw|ndf)/.test(s.role))]];
@@ -1031,7 +1040,7 @@ function renderOverview(vis) {
     const gr = el('tr', 'grp'); const td = el('td', null, GROUPS[g].toUpperCase()); td.colSpan = 9; gr.append(td); tb.append(gr);
     list.forEach((s) => {
       const m = metrics(s); const tr = el('tr');
-      [s.name, dmy(m.t), lv(s, m.v), chgTxt(s, m.w), chgTxt(s, m.m1), chgTxt(s, m.m3), chgTxt(s, m.ytd), lv(s, m.hi), lv(s, m.lo)].forEach((x) => tr.append(el('td', null, x)));
+      [s.name + (ILLIQ(s.role) ? ' (fixing, ít thanh khoản)' : ''), dmy(m.t), lv(s, m.v), chgTxt(s, m.w), chgTxt(s, m.m1), chgTxt(s, m.m3), chgTxt(s, m.ytd), lv(s, m.hi), lv(s, m.lo)].forEach((x) => tr.append(el('td', null, x)));
       tb.append(tr);
     });
   }
@@ -1399,9 +1408,9 @@ function renderStress(st) {
   const cc = SD.ceilCount();
   if (cc.length) lineChart(document.getElementById('s-ceil'), [{name: 'Số phiên', color: pal[0], pts: clip(cc, st)}], {height: 230, fmt: (v) => vn(v, 0), end: (v) => vn(v, 0) + ' phiên', refs: [{v: STRESS.ceilBad, label: 'Nửa thời gian', color: css('--red')}]});
   else noData(document.getElementById('s-ceil'), 'Cần tỷ giá trung tâm.');
-  const cON = SD.carry('ON'), c1 = SD.carry('1'), c3 = SD.carry('3');
-  const allC = [...cON, ...c1, ...c3].filter((p) => p[0] >= st).map((p) => p[1]);
-  lineChart(document.getElementById('s-carry'), [{name: '1M', color: pal[0], pts: clip(c1, st)}, {name: '3M', color: pal[1], pts: clip(c3, st)}, {name: 'ON', color: pal[2], pts: clip(cON, st), width: 1.3}],
+  const cON = SD.carry('ON'), c1 = SD.carry('1');
+  const allC = [...cON, ...c1].filter((p) => p[0] >= st).map((p) => p[1]);
+  lineChart(document.getElementById('s-carry'), [{name: '1M', color: pal[0], pts: clip(c1, st)}, {name: 'ON', color: pal[1], pts: clip(cON, st), width: 1.3}],
     {height: 250, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), tip: (v) => sg(v, 2) + ' điểm %', bands: allC.length && d3.min(allC) < 0 ? [{lo: d3.min(allC) - 0.3, hi: 0, color: css('--red'), op: 0.06}] : [], empty: 'Cần VNIBOR và lãi suất USD.'});
   const sl = SD.slope();
   lineChart(document.getElementById('s-curve'), [{name: '6M − 1M', color: pal[0], pts: clip(sl, st)}], {height: 230, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), tip: (v) => sg(v, 2) + ' điểm %', empty: 'Cần Swap 1M và 6M.'});
@@ -1440,7 +1449,7 @@ function renderStress(st) {
   if (longest.best) rd.append(`Chuỗi sát trần dài nhất trong dữ liệu (dư địa < 0,5%): `, el('b', null, `${longest.best} phiên`), ` từ ${dmy(longest.bs)} đến ${dmy(longest.be)}. `);
   const allSp = sp.filter((s) => !s.seas);
   if (allSp.length) rd.append(`VNIBOR ON có ${allSp.length} phiên tăng vọt ngoài mùa vụ trong toàn bộ dữ liệu, gần nhất ${dmy(allSp.at(-1).t)} (${vn(allSp.at(-1).v, 2)}%). `);
-  rd.append('Lịch mùa vụ chỉ lọc các đợt quanh Tết và đầu/cuối tháng; các đợt cuối quý trùng cuối tháng nên cũng được coi là mùa vụ. Carry 1M/3M dùng SOFR bình quân nên chỉ để tham khảo cho tới khi có nguồn lãi suất USD thay thế.');
+  rd.append('Lịch mùa vụ chỉ lọc các đợt quanh Tết và đầu/cuối tháng; các đợt cuối quý trùng cuối tháng nên cũng được coi là mùa vụ. Carry 1M dùng SOFR bình quân nên chỉ để tham khảo cho tới khi có nguồn lãi suất USD thay thế.');
 }
 
 // ---------- render: pressure ----------
@@ -1448,7 +1457,7 @@ function pressureRows() {
   return [
     {name: 'Khoảng cách tới trần biên độ', note: 'đổi dấu: càng gần trần càng đỏ', pts: DER.head(), sign: -1, fmt: (v) => vn(v, 2) + '%'},
     {name: 'Chênh lệch giá tự do − LNH', note: 'dương = USD ngoài hệ thống đắt hơn', pts: DER.freePct(), sign: 1, fmt: (v) => sg(v, 2) + '%'},
-    {name: 'Basis swap 3M', note: 'dương = thiếu USD trong nước', pts: DER.basis(3), sign: 1, fmt: (v) => sg(v, 2) + ' điểm %'},
+    {name: 'Basis swap 1M', note: 'dương = thiếu USD trong nước', pts: DER.basis(1), sign: 1, fmt: (v) => sg(v, 2) + ' điểm %'},
     {name: 'Spread swap gap NDF − onshore 3M', note: 'dương = nước ngoài lo mất giá hơn', pts: DER.gap(3), sign: 1, fmt: (v) => sg(v, 2) + ' điểm %'},
     {name: 'Số phiên sát trần (20 phiên)', note: 'dư địa tới trần dưới 0,3%', pts: SD.ceilCount(), sign: 1, fmt: (v) => vn(v, 0) + ' phiên'},
     {name: 'Carry VND − USD 1M', note: 'đổi dấu: carry càng thấp càng đỏ', pts: SD.carry('1'), sign: -1, fmt: (v) => sg(v, 2) + ' điểm %'},
@@ -1530,18 +1539,25 @@ function renderSwap() {
   const T = S.tenor, pal = palette();
   const L = R('lnh'); const last = L ? L.pts.at(-1)[0] : Date.now(); const st = startFor(S.period, last);
   const imp = DER.imp(T), vnT = R('vn' + T), uT = R('usd' + T);
-  document.getElementById('t-imp').textContent = `Lãi suất VND hàm ý ${T}M, VNIBOR ${T}M và ${uT ? uT.name : 'lãi suất USD ' + T + 'M'}`;
+  document.getElementById('t-imp').textContent = T === 1 ? `Lãi suất VND hàm ý 1M, VNIBOR 1M và ${uT ? uT.name : 'lãi suất USD 1M'}` : `Lãi suất VND hàm ý ${T}M so với VNIBOR 1M (VNIBOR ${T}M chỉ là fixing, nét đứt)`;
   document.getElementById('usdWarn').textContent = usdWarn(); document.getElementById('usdWarn').hidden = !usdWarn();
   const l1 = [];
   if (imp.length) l1.push({name: 'VND hàm ý', color: pal[0], pts: clip(imp, st)});
-  if (vnT) l1.push({name: 'VNIBOR', color: pal[1], pts: clip(vnT.pts, st)});
+  if (vnT && !ILLIQ('vn' + T)) l1.push({name: 'VNIBOR', color: pal[1], pts: clip(vnT.pts, st)});
+  if (T > 1 && R('vn1')) l1.push({name: 'VNIBOR 1M', color: pal[1], pts: clip(R('vn1').pts, st)});
+  if (vnT && ILLIQ('vn' + T)) l1.push({name: `VNIBOR ${T}M (fixing)`, color: css('--muted'), pts: clip(vnT.pts, st), dash: '4 3', width: 1.2});
   if (uT) l1.push({name: isAvg(uT.key) ? 'SOFR TB' : 'USD', color: pal[2], pts: clip(uT.pts, st), dash: '4 3'});
   lineChart(document.getElementById('c-imp'), l1, {height: 280, fmt: (v) => vn(v, 1) + '%', end: (v) => vn(v, 2) + '%', empty: `Cần USD/VND LNH, Swap ${T}M và SOFR ${T}M.`});
-  const bl = TEN.map((k, i) => ({name: `Basis ${k}M`, color: k === T ? pal[0] : pal[i === 0 ? 2 : 1], pts: clip(DER.basis(k), st), width: k === T ? 2.4 : 1.5})).filter((s) => s.pts.length).sort((a, b) => (b.name === `Basis ${T}M`) - (a.name === `Basis ${T}M`));
-  lineChart(document.getElementById('c-basis'), bl, {height: 280, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), empty: 'Cần thêm VNIBOR cùng kỳ hạn.'});
+  const b1 = DER.basis(1);
+  const bl = [{name: 'Basis 1M', color: pal[0], pts: clip(b1, st), width: 2.4}];
+  if (T > 1) { const tp = joinRoles(['lnh', 'sw' + T, 'usd' + T, 'vn1'], (s, p, r, v, t) => implied(s, p, r, days(t, T)) - v); bl.push({name: `Phần bù ${T}M`, color: pal[1], pts: clip(tp, st), width: 1.6, dash: '5 3'}); }
+  lineChart(document.getElementById('c-basis'), bl, {height: 280, zero: true, fmt: (v) => vn(v, 1), end: (v) => sg(v, 2), tip: (v) => sg(v, 2) + ' điểm %', empty: 'Cần VNIBOR 1M.'});
   const ir = document.getElementById('impRead'); ir.replaceChildren();
-  const bT = DER.basis(T);
-  if (imp.length && bT.length) {
+  const bT = b1;
+  if (T > 1 && imp.length && R('vn1')) {
+    const v1 = R('vn1').pts.at(-1)[1], iv = imp.at(-1)[1];
+    ir.append(`Ngày ${dmy(imp.at(-1)[0])}: lãi suất VND hàm ý ${T}M từ swap `, el('b', null, vn(iv, 2) + '%'), iv >= v1 ? ', cao hơn VNIBOR 1M ' : ', thấp hơn VNIBOR 1M ', el('b', null, vn(v1, 2) + '%'), ': phần bù kỳ hạn ', el('b', null, sg(iv - v1, 2) + ' điểm %'), ` (${T}M so với 1M). VNIBOR ${T}M (${vn(vnT?.pts.at(-1)[1], 2)}%) chỉ là fixing không có giao dịch, nên không dùng để tính basis. Basis dưới đây tính ở kỳ hạn 1M: `, el('b', null, sg(b1.at(-1)?.[1], 2) + ' điểm %'), '.');
+  } else if (imp.length && bT.length) {
     const b = bT.at(-1)[1], b4 = atOrBefore(bT, bT.at(-1)[0] - 28 * DAY);
     const yr = bT.filter((p) => p[0] > bT.at(-1)[0] - 364 * DAY).map((p) => p[1]);
     ir.append(`Ngày ${dmy(imp.at(-1)[0])}: lãi suất VND hàm ý ${T}M `, el('b', null, vn(imp.at(-1)[1], 2) + '%'), ` so với VNIBOR ${T}M `, el('b', null, vn(vnT.pts.at(-1)[1], 2) + '%'), ', basis ', el('b', null, sg(b, 2) + ' điểm %'));
